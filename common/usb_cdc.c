@@ -39,6 +39,7 @@
 #include <stdbool.h>
 
 #include "common.h"
+#include "spi.h"
 #include "at91sam7s512.h"
 #include "config_gpio.h"
 
@@ -687,12 +688,22 @@ static uint32_t usb_write(const uint8_t* data, const size_t len) {
 // Interface to the main program
 //***************************************************************************
 
+bool last_spi = false;
+
 // The function to receive a command from the client via USB
 bool cmd_receive(UsbCommand* cmd) {
 
+	if(spi_receive(cmd))
+	{
+		last_spi = true;
+		return true;
+	}
+
 	// Check if there is a usb packet available
 	if (!usb_poll())
+	{
 		return false;
+	}
 
 	// Try to retrieve the available command frame
 	size_t rxlen = usb_read((uint8_t*)cmd, sizeof(UsbCommand));
@@ -701,10 +712,10 @@ bool cmd_receive(UsbCommand* cmd) {
 	if (rxlen != sizeof(UsbCommand))
 		return false;
 
+	last_spi = false;
 	// Received command successfully
 	return true;
 }
-
 
 // The function to send a response to the client via USB
 bool cmd_send(uint16_t cmd, uint32_t arg0, uint32_t arg1, uint32_t arg2, void* data, uint16_t datalen) {
@@ -730,7 +741,12 @@ bool cmd_send(uint16_t cmd, uint32_t arg0, uint32_t arg1, uint32_t arg2, void* d
 
 	// Send frame and make sure all bytes are transmitted
 	size_t tx_size = offsetof(UsbResponse, d) + datalen;
-	if (usb_write((uint8_t*)&txcmd, tx_size) != 0) return false;
+
+	spi_write((uint8_t*)&txcmd, tx_size);
+	if(!last_spi)
+	{
+		if (usb_write((uint8_t*)&txcmd, tx_size) != 0) return false;
+	}
 
 	return true;
 }
@@ -756,6 +772,7 @@ bool cmd_send_old(uint16_t cmd, uint32_t arg0, uint32_t arg1, uint32_t arg2, voi
 	}
 
 	// Send frame and make sure all bytes are transmitted
+	spi_write((uint8_t*)&txcmd, sizeof(UsbCommand));
 	if (usb_write((uint8_t*)&txcmd, sizeof(UsbCommand)) != 0) return false;
 
 	return true;

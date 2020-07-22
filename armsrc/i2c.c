@@ -41,7 +41,7 @@
 
 static volatile unsigned long c;
 
-//	ֱ��ʹ��ѭ������ʱ��һ��ѭ�� 6 ��ָ�48M�� Delay=1 ���Ϊ 200kbps
+//	Ö±½ÓÊ¹ÓÃÑ­»·À´ÑÓÊ±£¬Ò»¸öÑ­»· 6 ÌõÖ¸Áî£¬48M£¬ Delay=1 ´ó¸ÅÎª 200kbps
 // timer.
 // I2CSpinDelayClk(4) = 12.31us
 // I2CSpinDelayClk(1) = 3.07us
@@ -236,6 +236,7 @@ static void I2C_SendByte(uint8_t data) {
 }
 
 bool I2C_is_available(void) {
+	return false;
 	I2C_Reset_EnterMainProgram();
 	if (!I2C_Start())  // some other device is active on the bus
 		return true;
@@ -250,7 +251,7 @@ bool I2C_is_available(void) {
 
 #ifdef WITH_SMARTCARD
 // Reset the SIM_Adapter, then enter the bootloader program
-// Reserve��For firmware update.
+// Reserve£ºFor firmware update.
 static void I2C_Reset_EnterBootloader(void) {
 	I2C_SetResetStatus(0, 1, 1);
 	WaitMS(100);
@@ -472,7 +473,7 @@ static int16_t I2C_BufferRead(uint8_t *data, uint8_t len, uint8_t device_cmd, ui
 		
 		len--;
 
-		// ��ȡ�ĵ�һ���ֽ�Ϊ��������	
+		// ¶ÁÈ¡µÄµÚÒ»¸ö×Ö½ÚÎªºóÐø³¤¶È	
 		// The first byte in response is the message length
 		if (!readcount && (len > *data)) {
 			len = *data;
