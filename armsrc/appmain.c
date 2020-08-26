@@ -398,7 +398,7 @@ void SendStatus(void) {
 	LED_A_OFF();
 }
 
-#if defined(WITH_ISO14443a_StandAlone) || defined(WITH_ISO15693_StandAlone) || defined(WITH_LF_StandAlone)
+#if defined(WITH_ISO14443a_StandAlone) || defined(WITH_ISO15693_StandAlone) || defined(WITH_LF_StandAlone) || defined(WITH_Legic_StandAlone)
 
 #define OPTS 2
 
@@ -863,6 +863,86 @@ void StandAloneMode15() {
 						BruteforceIso15693(0x40, 0xFF);
 						break;
 					case 5:
+						done = true;
+						break;
+				}
+				LEDsoff();
+				while(BUTTON_PRESS()) {
+					WDT_HIT();
+				}
+				break;
+			default:
+				SpinDelay(50);
+				continue;
+		}
+	}
+}
+
+#elif WITH_Legic_StandAlone
+
+void StandAloneModeLegic() {
+	StandAloneMode();
+	FpgaDownloadAndGo(FPGA_BITSTREAM_HF);
+
+	int mode = 0;
+	bool done = false;
+	const char *modes[] = { "Read card", "Emulate card" };
+
+	Dbprintf("Starting standalone mode: Menu");
+	LED(0x0F, 0);
+
+	/* wait for button being released before preoceeding evaluation */
+	while(BUTTON_PRESS()) {
+		WDT_HIT();
+	}
+
+	while(!done) {
+		if(usb_poll_validate_length()) {
+			done = true;
+			continue;
+		}
+		
+		SpinDelay(50);
+		usb_poll();
+		WDT_HIT();
+
+		LEDsoff();
+		switch(mode) {
+			case 0:
+				LED_A_ON();
+				break;
+			case 1:
+				LED_B_ON();
+				break;
+			case 2:
+				LED_A_ON();
+				LED_B_ON();
+				LED_C_ON();
+				LED_D_ON();
+				break;
+		}
+
+		switch(BUTTON_HELD(1000)) {
+			case BUTTON_SINGLE_CLICK:
+				mode++;
+				mode %= 3;
+				Dbprintf(" Menu #%d: %s", mode, modes[mode]);
+				break;
+			case BUTTON_HOLD:
+				Dbprintf(" Execute #%d", mode);
+				LEDsoff();
+				while(BUTTON_PRESS()) {
+					WDT_HIT();
+				}
+
+				switch(mode) {
+					case 0:
+						LegicRfReader(0, -1);
+						break;
+					case 1:
+						LegicRfSimulate(2);
+						break;
+					case 2:
 						done = true;
 						break;
 				}
@@ -1602,6 +1682,10 @@ void  __attribute__((noreturn)) AppMain(void) {
 #if defined(WITH_ISO15693) && defined(WITH_ISO15693_StandAlone)
 			if (BUTTON_HELD(1000) > 0)
 				StandAloneMode15();
+#endif
+#if defined(WITH_LEGICRF) && defined(WITH_Legic_StandAlone)
+			if (BUTTON_HELD(1000) > 0)
+				StandAloneModeLegic();
 #endif
 		}
 	}
